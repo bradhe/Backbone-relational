@@ -1,5 +1,5 @@
 # Backbone-relational
-Backbone-relational provides one-to-one, one-to-many and many-to-one relations between models for [Backbone](https://github.com/documentcloud/backbone). To use relations, extend `Backbone.RelationalModel` (instead of the regular `Backbone.Model`) and define a property `relations`, containing an array of option objects. Each relation must define (as a minimum) the `type`, `key` and `relatedModel`. Available relation types are `Backbone.HasOne` and `Backbone.HasMany`. Backbone-relational features:
+Backbone-relational provides one-to-one, one-to-many and many-to-one relations between models for [Backbone](https://github.com/documentcloud/backbone). To use relations, extend `Backbone.RelationalModel` (instead of the regular `Backbone.Model`) and define a property `relations`, containing an array of option objects. Each relation must define (as a minimum) the `type`, `key` and `relatedModel`. Available relation types are `Backbone.HasOne`, `Backbone.HasMany`, and `Backbone.HasManyPolymorphic`. Backbone-relational features:
 
 * Bidirectional relations, which notify related models of changes through events.
 * Control how relations are serialized using the `includeInJSON` option.
@@ -7,10 +7,10 @@ Backbone-relational provides one-to-one, one-to-many and many-to-one relations b
 * Retrieve (a set of) related models through the `fetchRelated(key<string>, [options<object>])` method.
 * Determine the type of `HasMany` collections with `collectionType`.
 * Bind new events to a `Backbone.RelationalModel` for:
-	* addition to a `HasMany` relation (bind to `add:<key>`; arguments: `(addedModel, relatedCollection)`),
-	* removal from a `HasMany` relation (bind to `remove:<key>`; arguments: `(removedModel, relatedCollection)`),
-	* reset of a `HasMany` relation (bind to `reset:<key>`; arguments: `(relatedCollection)`),
-	* changes to the key itself on `HasMany` and `HasOne` relations (bind to `update:<key>`; arguments=`(model, relatedModel/relatedCollection)`).
+	* addition to a `HasMany` or `HasManyPolymorphic` relation (bind to `add:<key>`; arguments: `(addedModel, relatedCollection)`),
+	* removal from a `HasMany` or `HasManyPolymorphic` relation (bind to `remove:<key>`; arguments: `(removedModel, relatedCollection)`),
+	* reset of a `HasMany` or `HasManyPolymorphic` relation (bind to `reset:<key>`; arguments: `(relatedCollection)`),
+	* changes to the key itself on `HasMany`, `HasOne`, and `HasManyPolymorphic` relations (bind to `update:<key>`; arguments=`(model, relatedModel/relatedCollection)`).
 
 ## Contents
 
@@ -69,11 +69,15 @@ AnimalCollection = Backbone.Collection.extend({
 
 ### relatedModel
 
-Value: a string (which can be resolved to an object type on the global scope), or a reference to a `Backbone.RelationalModel` type.
+Value: a string (which can be resolved to an object type on the global scope), or a reference to a `Backbone.RelationalModel` type. Required for uniform relations.
+
+### relatedModels
+
+Value: an array of strings which can be resolved to an object type on the global scope or references to a `Backbone.RelationalModel` type. Required for polymorphic relations.
 
 ### key
 
-Value: a string. References an attribute name on `relatedModel`.
+Value: a string. References an attribute name on `relatedModel` or `relatedModels`.
 
 ### type
 
