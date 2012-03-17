@@ -64,10 +64,17 @@ $(document).ready(function() {
 		}
 	});
 
+	window.Tiger = Animal.extend({
+		type: 'Tiger'
+	});
+
+	window.Lion = Animal.extend({
+		type: 'Lion'
+	});
+
 	window.AnimalCollection = Backbone.Collection.extend({
 		model: Animal
 	});
-
 
 	window.House = Backbone.RelationalModel.extend({
 		relations: [{
@@ -117,6 +124,18 @@ $(document).ready(function() {
 			}
 		]
 	});
+
+	window.Zookeeper = Backbone.RelationalModel.extend({
+		relations: [{
+			type: Backbone.HasManyPolymorphic,
+			key: 'caresFor',
+			relatedModels: ['Lion', 'Tiger'],
+			reverseRelation: {
+				type: Backbone.HasOne,
+				key: 'careGiver'
+			}
+		}]
+	})
 
 	window.PersonCollection = Backbone.Collection.extend({
 		model: Person
@@ -196,6 +215,10 @@ $(document).ready(function() {
 			id: 'person-3',
 			resource_uri: 'person-3'
 		});
+
+		window.zookeeper1 = new Zookeeper({
+			id: 'zookeeper-1'
+		})
 
 		window.oldCompany = new Company({
 			id: 'company-1',
@@ -1579,5 +1602,11 @@ $(document).ready(function() {
 
 			equal( zoo.get( 'name' ), 'Zoo Station' );
 			equal( lion.get( 'name' ), 'Simba' );
+		});
+
+	module("Backbone.HasManyPolymorphic", { setup: initObjects });
+		test("Configures relations properly", function() {
+			var coll = zookeeper1.get('caresFor');
+			ok(coll instanceof Backbone.Collection, "A collection was properly configured.");
 		});
 });
