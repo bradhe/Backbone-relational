@@ -336,7 +336,7 @@ $(document).ready(function() {
 	
 	
 		test( "Initialized", function() {
-			equal( Backbone.Relational.store._collections.length, 5, "Store contains 5 collections" );
+			equal( Backbone.Relational.store._collections.length, 6, "Store contains 6 collections" );
 		});
 		
 		test( "getObjectByName", function() {
@@ -460,8 +460,7 @@ $(document).ready(function() {
 		
 	
 	module( "Backbone.RelationalModel", { setup: initObjects } );
-		
-		
+
 		test( "Return values: set returns the Model", function() {
 			var personId = 'person-10';
 			var person = new Person({
@@ -692,7 +691,7 @@ $(document).ready(function() {
 			ok( viewJSON.property_ids && viewJSON.property_ids.length === 2, "'viewJSON' has two 'property_ids'" );
 			ok( typeof viewJSON.properties === 'undefined', "'viewJSON' does not have 'properties'" );
 
-			console.log( view, viewJSON, property1, property2 );
+			//console.log( view, viewJSON, property1, property2 );
 		});
 		
 		
