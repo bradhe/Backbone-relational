@@ -336,7 +336,7 @@ $(document).ready(function() {
 	
 	
 		test( "Initialized", function() {
-			equal( Backbone.Relational.store._collections.length, 6, "Store contains 6 collections" );
+			equal( Backbone.Relational.store._collections.length, 8, "Store contains 8 collections" );
 		});
 		
 		test( "getObjectByName", function() {
@@ -1604,8 +1604,53 @@ $(document).ready(function() {
 		});
 
 	module("Backbone.HasManyPolymorphic", { setup: initObjects });
-		test("Configures relations properly", function() {
+		test("Configures parent models with collections", function() {
 			var coll = zookeeper1.get('caresFor');
-			ok(coll instanceof Backbone.Collection, "A collection was properly configured.");
+			ok(coll instanceof Backbone.Collection, "No collection was configured for property 'caresFor'");
+		});
+
+		test("Calls collection callbacks as one might expect", function() {
+			var callCount = 0;
+
+			zookeeper1.bind('add:caresFor', function() {
+				callCount++;
+			});
+
+			zookeeper1.get('caresFor').add({type: 'Lion', name: 'Jimmy John'});
+			equal(callCount, 1);
+		});
+
+		test("Figures out what type of model to create from a hash.", function() {
+			zookeeper1.bind('add:caresFor', function(model, collection) {
+				ok(model instanceof Lion);
+			});
+
+			zookeeper1.get('caresFor').add({type: 'Lion', name: 'Jimmy John'});
+		});
+
+		test("Figures out what type of model to create from a hash no matter the type.", function() {
+			zookeeper1.bind('add:caresFor', function(model, collection) {
+				ok(model instanceof Lion || model instanceof Tiger);
+			});
+
+			zookeeper1.get('caresFor').add({type: 'Lion', name: 'Jimmy John'});
+			zookeeper1.get('caresFor').add({type: 'Tiger', name: 'Jimmy John'});
+		});
+
+		test("Removes the type attribute from the attributes collection since we do not care about it.", function() {
+			zookeeper1.bind('add:caresFor', function(model, collection) {
+				ok(model.get('type') === undefined);
+			});
+
+			zookeeper1.get('caresFor').add({type: 'Lion', name: 'Jimmy John'});
+			zookeeper1.get('caresFor').add({type: 'Tiger', name: 'Jimmy John'});
+		});
+
+		test("Sets reverse relations", function() {
+			zookeeper1.bind('add:caresFor', function(model, collection) {
+				equal(model.get('careGiver'), zookeeper1);
+			});
+
+			zookeeper1.get('caresFor').add({type: 'Lion', name: 'Jimmy John'});
 		});
 });
