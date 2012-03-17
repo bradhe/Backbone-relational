@@ -346,7 +346,7 @@
 		
 		/**
 		 * Set the related model(s) for this relation
-		 * @param {Backbone.Mode|Backbone.Collection} related
+		 * @param {Backbone.Model|Backbone.Collection} related
 		 * @param {Object} [options]
 		 */
 		setRelated: function( related, options ) {
@@ -355,19 +355,6 @@
 			this.instance.acquire();
 			this.instance.set( this.key, related, _.defaults( options || {}, { silent: true } ) );
 			this.instance.release();
-		},
-
-		/**
-		 * Determine if a relation (on a different RelationalModel) is the reverse
-		 * relation of the current one.
-		 * @param {Backbone.Relation} relation
-		 */
-		_isReverseRelation: function( relation ) {
-			if ( relation.instance instanceof this.relatedModel && this.reverseRelation.key === relation.key &&
-					this.key === relation.reverseRelation.key ) {
-				return true;
-			}
-			return false;
 		},
 		
 		/**
@@ -448,6 +435,19 @@
 			if ( this.options.createModels && typeof( item ) === 'object' ) {
 				return new this.relatedModel( item );
 			}
+		},
+
+		/**
+		 * Determine if a relation (on a different RelationalModel) is the reverse
+		 * relation of the current one.
+		 * @param {Backbone.Relation} relation
+		 */
+		_isReverseRelation: function( relation ) {
+			if ( relation.instance instanceof this.relatedModel && this.reverseRelation.key === relation.key &&
+					this.key === relation.reverseRelation.key ) {
+				return true;
+			}
+			return false;
 		},
 		
 		/**
@@ -579,11 +579,7 @@
 		},
 
 		createModel: function( item ) {
-			if(!this.options.createModels) {
-				return;
-			}
-
-			if(typeof( item ) !== 'object') {
+			if(!this.options.createModels || typeof(item) !== 'object') {
 				return;
 			}
 
@@ -614,26 +610,26 @@
 				warn = Backbone.Relational.showWarnings && typeof console !== 'undefined';
 
 			if ( !m || !k || !rms ) {
-				warn && console.warn( 'Relation=%o; no model, key or relatedModel (%o, %o, %o)', this, m, k, rms );
+				warn && console.warn( 'Polymorphic Relation=%o; no model, key or relatedModel (%o, %o, %o)', this, m, k, rms );
 				return false;
 			}
 
 			// Check if the type in 'relatedModel' inherits from Backbone.RelationalModel
 			if ( !( m.prototype instanceof Backbone.RelationalModel.prototype.constructor ) ) {
-				warn && console.warn( 'Relation=%o; model does not inherit from Backbone.RelationalModel (%o)', this, i );
+				warn && console.warn( 'Polymorphic Relation=%o; model does not inherit from Backbone.RelationalModel (%o)', this, i );
 				return false;
 			}
 
 			// Check if this is not a HasMany, and the reverse relation is HasMany as well
 			if ( this instanceof Backbone.HasMany && this.reverseRelation.type === Backbone.HasMany.prototype.constructor ) {
-				warn && console.warn( 'Relation=%o; relation is a HasMany, and the reverseRelation is HasMany as well.', this );
+				warn && console.warn( 'Polymorphic Relation=%o; relation is a HasMany, and the reverseRelation is HasMany as well.', this );
 				return false;
 			}
 
 			// Check if the type in 'relatedModel' inherits from Backbone.RelationalModel
 			var allModelsRelational = _(rms).all(function(rm) {
-				if ( !( rms.prototype instanceof Backbone.RelationalModel.prototype.constructor ) ) {
-					warn && console.warn( 'Relation=%o; relatedModel does not inherit from Backbone.RelationalModel (%o)', this, rm );
+				if ( !( rm.prototype instanceof Backbone.RelationalModel.prototype.constructor ) ) {
+					warn && console.warn( 'Polymorphic Relation=%o; model does not inherit from Backbone.RelationalModel (%o)', this, rm );
 					return false;
 				}
 
@@ -660,6 +656,25 @@
 			}
 
 			return true;
+		},
+
+		/**
+		 * Determine if a relation (on a different RelationalModel) is the reverse
+		 * relation of the current one.
+		 * @param {Backbone.Relation} relation
+		 */
+		_isReverseRelation: function( relation ) {
+			var _this = this;
+
+			return _(this.relatedModels).any(function(relatedModel) {
+				if ( relation.instance instanceof relatedModel && _this.reverseRelation.key === relation.key &&
+						_this.key === relation.reverseRelation.key ) {
+					return true;
+				}
+
+				// Nope nope!
+				return false;
+			});
 		},
 
 		// Cleanup. Get reverse relation, call removeRelated on each.
@@ -863,7 +878,9 @@
 			}
 			
 			collection.reset();
-			//collection.model = this.relatedModel;
+
+			// Depending on the type of relation, we'll want to put different types of models in here.
+			this.configureCollectionModel(collection);
 			
 			if ( this.options.collectionKey ) {
 				var key = this.options.collectionKey === true ? this.options.reverseRelation.key : this.options.collectionKey;
@@ -1035,6 +1052,9 @@
 					}
 				}, this);
 			}
+		},
+		configureCollectionModel: function(collection) {
+			collection.model = this.relatedModel;
 		}
 	});
 
@@ -1066,10 +1086,37 @@
 					}
 				}, this);
 			}
+		},
+		configureCollectionModel: function(collection) {
+			// This is a little harder. We need to override this collection's add method to create special logic for
+			// when an attribute hash gets given to this guy.
+			var _this = this, _add = collection.add;
+
+			collection.add = function(model, options) {
+				// If this is already a model, don't worry about it.
+				if(typeof(model) === 'object') {
+					var attrs = model, type = model.type;
+
+					// We don't want to pass this along!
+					delete model.type;
+
+					// We are assuming this collection belongs to a polymorphic relation. As such, we need
+					// a type configured to figure out what associated model to create.
+					if(!type) {
+						warn && console.warn("Attributes %o does not include a type attribute.", attrs);
+						return;
+					}
+
+					var modelType = _this.relatedModels[type];
+					model = new modelType(attrs, options);
+				}
+
+				return _add.call(this, model, options);
+			};
 		}
 	});
 
-	_.extend(Backbone.HasMany.prototype, Backbone.HasManyBase)
+	_.extend(Backbone.HasManyPolymorphic.prototype, Backbone.HasManyBase)
 	
 	/**
 	 * A type of Backbone.Model that also maintains relations to other models and collections.
